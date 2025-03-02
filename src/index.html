@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Capture the FootGoose</title>
+    <link rel="stylesheet" href="styles/style.css" />
+  </head>
+  <body>
+    <div class="game-container">
+      <canvas id="gameCanvas"></canvas>
+      <!-- UI will be generated via JavaScript -->
+    </div>
+    <!-- Import Three.js from CDN -->
+    <script type="module">
+      import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js";
+      window.THREE = THREE; // Make THREE globally available
+    </script>
+    <script type="module" src="../dist/main.js"></script>
+  </body>
+</html>
