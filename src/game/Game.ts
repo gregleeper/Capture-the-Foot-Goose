@@ -455,70 +455,278 @@ export class Game {
    * This adds touch controls for mobile play
    */
   private createMobileControls(): void {
-    const gameContainer = document.querySelector(".game-container")!;
+    const gameContainer = document.querySelector(
+      ".game-container"
+    ) as HTMLElement;
 
     // Create main container for mobile controls
     const mobileControls = document.createElement("div");
     mobileControls.className = "mobile-controls";
 
-    // Create left side controls (left arrow button)
+    // Create left side controls (jump button)
     const leftControls = document.createElement("div");
     leftControls.className = "mobile-controls-left";
 
-    const leftButton = document.createElement("div");
-    leftButton.className = "control-button arrow-left";
-    leftButton.setAttribute("aria-label", "Move Left");
-
-    // Add event listeners for the left button
-    leftButton.addEventListener("touchstart", (e) => {
-      e.preventDefault(); // Prevent default touch behavior
-      this.handleMobileControl("left", true);
-    });
-
-    leftButton.addEventListener("touchend", (e) => {
-      e.preventDefault();
-      this.handleMobileControl("left", false);
-    });
-
-    // Create right side controls (right arrow and jump buttons)
-    const rightControls = document.createElement("div");
-    rightControls.className = "mobile-controls-right";
-
-    const rightButton = document.createElement("div");
-    rightButton.className = "control-button arrow-right";
-    rightButton.setAttribute("aria-label", "Move Right");
-
-    // Add event listeners for the right button
-    rightButton.addEventListener("touchstart", (e) => {
-      e.preventDefault();
-      this.handleMobileControl("right", true);
-    });
-
-    rightButton.addEventListener("touchend", (e) => {
-      e.preventDefault();
-      this.handleMobileControl("right", false);
-    });
-
+    // Create jump button
     const jumpButton = document.createElement("div");
     jumpButton.className = "control-button arrow-up";
     jumpButton.setAttribute("aria-label", "Jump");
 
-    // Add event listener for the jump button
-    jumpButton.addEventListener("touchstart", (e) => {
-      e.preventDefault();
-      this.handleMobileControl("jump", true);
-    });
+    // Add both touch and click event listeners for jump button
+    const addJumpEvents = (element: HTMLElement) => {
+      // Touch events
+      element.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        this.handleMobileControl("jump", true);
+      });
 
-    // Assemble controls
-    leftControls.appendChild(leftButton);
+      // Mouse events for desktop testing
+      element.addEventListener("mousedown", () => {
+        this.handleMobileControl("jump", true);
+      });
+    };
+
+    addJumpEvents(jumpButton);
+
+    // Add jump button to left controls
+    leftControls.appendChild(jumpButton);
+
+    // Create right side controls (left and right arrow buttons)
+    const rightControls = document.createElement("div");
+    rightControls.className = "mobile-controls-right";
+
+    // Create left arrow button
+    const leftButton = document.createElement("div");
+    leftButton.className = "control-button arrow-left";
+    leftButton.setAttribute("aria-label", "Move Left");
+
+    // Create right arrow button
+    const rightButton = document.createElement("div");
+    rightButton.className = "control-button arrow-right";
+    rightButton.setAttribute("aria-label", "Move Right");
+
+    // Add touch and click event listeners for movement buttons
+    const addMoveEvents = (element: HTMLElement, direction: string) => {
+      // Touch events
+      element.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        this.handleMobileControl(direction, true);
+      });
+
+      element.addEventListener("touchend", (e) => {
+        e.preventDefault();
+        this.handleMobileControl(direction, false);
+      });
+
+      element.addEventListener("touchcancel", (e) => {
+        e.preventDefault();
+        this.handleMobileControl(direction, false);
+      });
+
+      // Mouse events for desktop testing
+      element.addEventListener("mousedown", () => {
+        this.handleMobileControl(direction, true);
+      });
+
+      element.addEventListener("mouseup", () => {
+        this.handleMobileControl(direction, false);
+      });
+
+      element.addEventListener("mouseleave", () => {
+        this.handleMobileControl(direction, false);
+      });
+    };
+
+    addMoveEvents(leftButton, "left");
+    addMoveEvents(rightButton, "right");
+
+    // Add movement buttons to right controls (left first, then right)
+    rightControls.appendChild(leftButton);
     rightControls.appendChild(rightButton);
-    rightControls.appendChild(jumpButton);
 
+    // Assemble the controls in the container
     mobileControls.appendChild(leftControls);
     mobileControls.appendChild(rightControls);
 
     // Add to game container
     gameContainer.appendChild(mobileControls);
+
+    // Add swipe gesture detection
+    this.addSwipeControls(gameContainer);
+
+    // Add global tap-to-jump functionality on the game container
+    // This allows tapping anywhere on the screen to jump
+    const handleGameAreaTap = (e: TouchEvent | MouseEvent) => {
+      // Don't process taps on control buttons (they have their own handlers)
+      if ((e.target as HTMLElement).closest(".control-button")) {
+        return;
+      }
+
+      // Don't process taps on UI elements like buttons
+      if (
+        (e.target as HTMLElement).closest("button") ||
+        (e.target as HTMLElement).closest(".ui-container") ||
+        (e.target as HTMLElement).closest(".shop-panel") ||
+        (e.target as HTMLElement).closest(".locker-panel")
+      ) {
+        return;
+      }
+
+      // If the game is running, handle the jump
+      if (this.isGameRunning && !this.player.isCurrentlyJumping()) {
+        this.player.jump();
+      }
+    };
+
+    // Add the touch and mouse handlers to the game container
+    gameContainer.addEventListener("touchstart", handleGameAreaTap);
+
+    // Only add click handler for desktop testing if not on a touch device
+    if (!("ontouchstart" in window)) {
+      gameContainer.addEventListener("click", handleGameAreaTap);
+    }
+  }
+
+  /**
+   * Add swipe controls for mobile play
+   * Detects swipe gestures and converts them to player movement
+   */
+  private addSwipeControls(element: HTMLElement): void {
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchEndX = 0;
+    let touchEndY = 0;
+    let touchStartTime = 0;
+
+    // Set minimum distance and time to register as a swipe
+    const minSwipeDistance = 50; // pixels
+    const maxSwipeTime = 300; // milliseconds
+
+    element.addEventListener("touchstart", (e: TouchEvent) => {
+      // Store initial touch position and time
+      touchStartX = e.changedTouches[0].screenX;
+      touchStartY = e.changedTouches[0].screenY;
+      touchStartTime = Date.now();
+
+      // Don't prevent default here to allow scrolling if needed
+    });
+
+    element.addEventListener("touchend", (e: TouchEvent) => {
+      // Don't process if touching UI elements
+      if (
+        (e.target as HTMLElement).closest("button") ||
+        (e.target as HTMLElement).closest(".ui-container") ||
+        (e.target as HTMLElement).closest(".shop-panel") ||
+        (e.target as HTMLElement).closest(".locker-panel") ||
+        (e.target as HTMLElement).closest(".control-button")
+      ) {
+        return;
+      }
+
+      // Store end position
+      touchEndX = e.changedTouches[0].screenX;
+      touchEndY = e.changedTouches[0].screenY;
+
+      // Calculate time elapsed
+      const touchElapsedTime = Date.now() - touchStartTime;
+
+      // Only process quick swipes (to distinguish from scrolling)
+      if (touchElapsedTime <= maxSwipeTime) {
+        // Calculate distances
+        const distanceX = touchEndX - touchStartX;
+        const distanceY = touchStartY - touchEndY; // Reversed for Y (up is positive)
+
+        // Check if swipe distance meets minimum threshold
+        if (
+          Math.abs(distanceX) >= minSwipeDistance ||
+          Math.abs(distanceY) >= minSwipeDistance
+        ) {
+          // Prevent default behavior to avoid scrolling
+          e.preventDefault();
+
+          // Determine swipe direction
+          if (Math.abs(distanceX) > Math.abs(distanceY)) {
+            // Horizontal swipe
+            if (distanceX > 0) {
+              // Swipe right
+              this.handleSwipe("right");
+            } else {
+              // Swipe left
+              this.handleSwipe("left");
+            }
+          } else {
+            // Vertical swipe
+            if (distanceY > 0) {
+              // Swipe up
+              this.handleSwipe("up");
+            } else {
+              // Swipe down - could be used for ducking or other actions
+              this.handleSwipe("down");
+            }
+          }
+        }
+      }
+    });
+
+    // Add touchmove listener to prevent scrolling when swiping
+    element.addEventListener("touchmove", (e: TouchEvent) => {
+      // Don't prevent default for all moves, only if it seems like a game control swipe
+      const touchCurrentX = e.changedTouches[0].screenX;
+      const touchCurrentY = e.changedTouches[0].screenY;
+
+      // Calculate current distances
+      const currentDistanceX = touchCurrentX - touchStartX;
+      const currentDistanceY = touchStartY - touchCurrentY;
+
+      // If it looks like a deliberate swipe control and we're in the game, prevent scrolling
+      if (
+        (Math.abs(currentDistanceX) > 30 || Math.abs(currentDistanceY) > 30) &&
+        this.isGameRunning &&
+        !(e.target as HTMLElement).closest(".ui-container") &&
+        !(e.target as HTMLElement).closest(".shop-panel") &&
+        !(e.target as HTMLElement).closest(".locker-panel")
+      ) {
+        e.preventDefault();
+      }
+    });
+  }
+
+  /**
+   * Handle swipe gestures
+   * Translates swipe directions into game actions
+   */
+  private handleSwipe(direction: string): void {
+    // Only respond to swipes when the game is running
+    if (!this.isGameRunning) return;
+
+    switch (direction) {
+      case "left":
+        // Trigger quick move left
+        this.player.moveLeft();
+        // Play move sound
+        this.audioManager.playSound("move");
+        break;
+
+      case "right":
+        // Trigger quick move right
+        this.player.moveRight();
+        // Play move sound
+        this.audioManager.playSound("move");
+        break;
+
+      case "up":
+        // Jump if not currently jumping
+        if (!this.player.isCurrentlyJumping()) {
+          this.player.jump();
+          // Play jump sound
+          this.audioManager.playSound("jump");
+        }
+        break;
+
+      case "down":
+        // Could implement duck or slide mechanic here if needed
+        break;
+    }
   }
 
   /**
