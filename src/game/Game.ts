@@ -297,6 +297,8 @@ export class Game {
     // Create UI container
     this.uiContainer = document.createElement("div");
     this.uiContainer.className = "ui-container";
+    this.uiContainer.style.display = "none"; // Initially hidden
+    document.querySelector(".game-container")!.appendChild(this.uiContainer);
 
     // Create score display
     this.scoreDisplay = document.createElement("div");
@@ -443,6 +445,119 @@ export class Game {
 
     // Create the start screen
     this.createStartScreen();
+
+    // Create mobile controls for touch devices
+    this.createMobileControls();
+  }
+
+  /**
+   * Create mobile control buttons for touch devices
+   * This adds touch controls for mobile play
+   */
+  private createMobileControls(): void {
+    const gameContainer = document.querySelector(".game-container")!;
+
+    // Create main container for mobile controls
+    const mobileControls = document.createElement("div");
+    mobileControls.className = "mobile-controls";
+
+    // Create left side controls (left arrow button)
+    const leftControls = document.createElement("div");
+    leftControls.className = "mobile-controls-left";
+
+    const leftButton = document.createElement("div");
+    leftButton.className = "control-button arrow-left";
+    leftButton.setAttribute("aria-label", "Move Left");
+
+    // Add event listeners for the left button
+    leftButton.addEventListener("touchstart", (e) => {
+      e.preventDefault(); // Prevent default touch behavior
+      this.handleMobileControl("left", true);
+    });
+
+    leftButton.addEventListener("touchend", (e) => {
+      e.preventDefault();
+      this.handleMobileControl("left", false);
+    });
+
+    // Create right side controls (right arrow and jump buttons)
+    const rightControls = document.createElement("div");
+    rightControls.className = "mobile-controls-right";
+
+    const rightButton = document.createElement("div");
+    rightButton.className = "control-button arrow-right";
+    rightButton.setAttribute("aria-label", "Move Right");
+
+    // Add event listeners for the right button
+    rightButton.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      this.handleMobileControl("right", true);
+    });
+
+    rightButton.addEventListener("touchend", (e) => {
+      e.preventDefault();
+      this.handleMobileControl("right", false);
+    });
+
+    const jumpButton = document.createElement("div");
+    jumpButton.className = "control-button arrow-up";
+    jumpButton.setAttribute("aria-label", "Jump");
+
+    // Add event listener for the jump button
+    jumpButton.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      this.handleMobileControl("jump", true);
+    });
+
+    // Assemble controls
+    leftControls.appendChild(leftButton);
+    rightControls.appendChild(rightButton);
+    rightControls.appendChild(jumpButton);
+
+    mobileControls.appendChild(leftControls);
+    mobileControls.appendChild(rightControls);
+
+    // Add to game container
+    gameContainer.appendChild(mobileControls);
+  }
+
+  /**
+   * Handle mobile control button presses
+   * @param control The control that was pressed
+   * @param isPressed Whether the control is being pressed (true) or released (false)
+   */
+  private handleMobileControl(control: string, isPressed: boolean): void {
+    if (!this.isGameRunning) return;
+
+    switch (control) {
+      case "left":
+        if (isPressed) {
+          this.player.moveLeft();
+
+          // Play sound
+          if (this.audioManager) {
+            this.audioManager.playSound("move");
+          }
+        }
+        break;
+
+      case "right":
+        if (isPressed) {
+          this.player.moveRight();
+
+          // Play sound
+          if (this.audioManager) {
+            this.audioManager.playSound("move");
+          }
+        }
+        break;
+
+      case "jump":
+        if (isPressed && !this.player.isCurrentlyJumping()) {
+          this.player.jump();
+        }
+        break;
+    }
   }
 
   private createStartScreen(): void {
