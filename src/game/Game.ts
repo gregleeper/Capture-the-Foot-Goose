@@ -20,8 +20,6 @@ import { Egg } from "./objects/Egg.js";
 import { AudioManager } from "./audio/AudioManager.js";
 import { Shop, ShopItem } from "./Shop.js";
 import { GameObject } from "./objects/GameObject.js";
-import { Pickup } from "./objects/Pickup.js";
-import { Road } from "./objects/Road.js";
 
 // Use the global THREE object
 declare const THREE: any;
